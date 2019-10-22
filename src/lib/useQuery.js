@@ -3,7 +3,7 @@ import { print } from "graphql";
 import { useRequest } from "./useRequest";
 
 export const useQuery = ({ query, variables }) => {
-  const request = useRequest(query, variables);
+  const request = useRequest("query", query, variables);
   const [result, setResult] = useState({
     data: undefined,
     error: undefined,
@@ -46,8 +46,7 @@ export const useQuery = ({ query, variables }) => {
           fetching: false
         });
       });
-    // eslint-disable-next-line
-  }, []);
+  }, [request]);
 
   return result;
 };
