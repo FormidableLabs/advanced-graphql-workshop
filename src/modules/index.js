@@ -29,6 +29,7 @@ const Home = () => {
     query: THREADS_QUERY,
     variables: { sortBy: "LATEST" }
   });
+  console.log(error);
 
   if (error) return <p>Something went wrong!</p>;
 
