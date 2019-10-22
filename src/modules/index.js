@@ -1,10 +1,10 @@
 import React from "react";
 import gql from "graphql-tag";
 import Thread from "./Thread";
-// import { useQuery } from "../lib/useQuery";
+import { useQuery } from "../lib/useQuery";
 import { useScrollToTop } from "../common/useScrollToTop";
 
-const THREADS_QUERY = gql`
+const THREADS_QUERY = `
   query($sortBy: SortBy!, $skip: Int, $limit: Int) {
     threads(sortBy: $sortBy, limit: $limit, skip: $skip) {
       id
@@ -24,15 +24,13 @@ const THREADS_QUERY = gql`
 
 const Home = () => {
   useScrollToTop();
-  //TODO: Replace these with useQuery hook you wrote
 
-  let fetching = true;
-  let data = {};
+  const { fetching, data, error } = useQuery({
+    query: THREADS_QUERY,
+    variables: { sortBy: "LATEST" }
+  });
 
-  // const [{ fetching, data }] = useQuery({
-  //   query: THREADS_QUERY,
-  //   variables: { sortBy: "LATEST" }
-  // });
+  if (error) return <p>Something went wrong!</p>;
 
   if (fetching) return <p>Loading...</p>;
 

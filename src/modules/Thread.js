@@ -1,6 +1,5 @@
 import React from "react";
 import styled from "styled-components";
-// import { useMutation } from "../lib/useMutation";
 import { timeDifferenceForDate } from "../utils/timeDiff";
 import { LikeButton } from "./LikeButton";
 
@@ -23,10 +22,8 @@ const Thead = ({
   id,
   createdAt
 }) => {
-  // TODO: Replace these with useMutation
   let result = { fetching: true };
   let like = id => {};
-  // const [result, like] = useMutation(LIKE_THREAD_MUTATION);
 
   return (
     <Wrapper>
