@@ -42,7 +42,29 @@ export class Client {
     this.url = url;
     this.fetchOptions = context.fetchOptions || {};
     this.requestPolicy = context.requestPolicy || "cache-first";
+
+    this.listeners = {};
   }
+
+  onOperationStart(operation, cb) {
+    const { key } = operation;
+    const listeners = this.listeners[key] || (this.listeners[key] = new Set());
+    listeners.add(cb);
+
+    executeFetch(operation).then(this.onResult);
+  }
+
+  onOperationEnd(operation, cb) {
+    const { key } = operation;
+    const listeners = this.listeners[key] || (this.listeners[key] = new Set());
+    listeners.remove(cb);
+  }
+
+  onResult = result => {
+    const { key } = result.operation;
+    const listeners = this.listeners[key] || (this.listeners[key] = new Set());
+    listeners.forEach(listener => listener(result));
+  };
 
   execute = async (operation, cb) => {
     const operationWithContext = {
@@ -54,7 +76,7 @@ export class Client {
       }
     };
 
-    const result = await executeFetch(operationWithContext);
-    cb(result);
+    this.onOperationStart(operationWithContext, cb);
+    return () => this.onOperationEnd(operationWithContext, cb);
   };
 }
