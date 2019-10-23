@@ -4,7 +4,7 @@ import Thread from "./Thread";
 import { useQuery } from "../lib/useQuery";
 import { useScrollToTop } from "../common/useScrollToTop";
 
-const THREADS_QUERY = `
+const THREADS_QUERY = gql`
   query($sortBy: SortBy!, $skip: Int, $limit: Int) {
     threads(sortBy: $sortBy, limit: $limit, skip: $skip) {
       id
@@ -25,7 +25,7 @@ const THREADS_QUERY = `
 const Home = () => {
   useScrollToTop();
 
-  const { fetching, data, error } = useQuery({
+  const [{ fetching, data, error }] = useQuery({
     query: THREADS_QUERY,
     variables: { sortBy: "LATEST" }
   });

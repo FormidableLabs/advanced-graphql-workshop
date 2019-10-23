@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRequest } from "./useRequest";
 import { useClient } from "./Context";
 
@@ -10,16 +10,24 @@ export const useQuery = ({ query, variables }) => {
     fetching: true
   });
 
-  useEffect(() => {
+  const executeQuery = useCallback(async () => {
     setResult(res => ({ ...res, fetching: true }));
 
-    client.execute(request, result => {
+    return client.execute(request, result => {
       setResult({
         ...result,
         fetching: false
       });
     });
-  }, [request, client]);
+  }, [client, request]);
 
-  return result;
+  useEffect(() => {
+    async function fetchQuery() {
+      return await executeQuery();
+    }
+
+    fetchQuery();
+  }, [request, client, executeQuery]);
+
+  return [result, executeQuery];
 };

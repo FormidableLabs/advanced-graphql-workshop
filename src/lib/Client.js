@@ -1,47 +1,24 @@
-import { print } from "graphql";
-import { CombinedError } from "./CombinedError";
-
-const executeFetch = async operation => {
-  const { query, variables, context } = operation;
-
-  const options = {
-    method: "POST",
-    body: JSON.stringify({
-      query: print(query),
-      variables
-    }),
-    headers: {
-      "content-type": "application/json",
-      ...context.fetchOptions.headers
-    },
-    ...context.fetchOptions
-  };
-
-  return fetch(context.url, options)
-    .then(res => {
-      if (res.status < 200 || res.status >= 300) {
-        throw new Error(res.statusText);
-      } else {
-        return res.json();
-      }
-    })
-    .then(({ data, errors }) => ({
-      operation,
-      data,
-      error: errors ? new CombinedError({ graphQLErrors: errors }) : undefined
-    }))
-    .catch(networkError => ({
-      operation,
-      data: undefined,
-      error: new CombinedError({ networkError })
-    }));
-};
+import { fetchExchange } from "./fetchExchange";
+import { dedupExchange } from "./dedupExchange";
+import { cacheExchange } from "./cacheExchange";
+import { composeExchanges } from "./composeExchanges";
 
 export class Client {
-  constructor(url, context = {}) {
-    this.url = url;
-    this.fetchOptions = context.fetchOptions || {};
-    this.requestPolicy = context.requestPolicy || "cache-first";
+  constructor(url, opts = {}) {
+    this.context = {
+      url,
+      fetch: opts.fetch || window.fetch.bind(window),
+      fetchOptions: opts.fetchOptions || {},
+      requestPolicy: opts.requestPolicy || "cache-first"
+    };
+
+    const exchanges = opts.exchanges || [
+      dedupExchange,
+      cacheExchange,
+      fetchExchange
+    ];
+
+    this.sendOperation = composeExchanges(this, exchanges)(this.onResult);
 
     this.listeners = {};
   }
@@ -50,14 +27,16 @@ export class Client {
     const { key } = operation;
     const listeners = this.listeners[key] || (this.listeners[key] = new Set());
     listeners.add(cb);
-
-    executeFetch(operation).then(this.onResult);
+    this.sendOperation(operation);
   }
 
   onOperationEnd(operation, cb) {
     const { key } = operation;
     const listeners = this.listeners[key] || (this.listeners[key] = new Set());
     listeners.remove(cb);
+    if (listeners.size === 0) {
+      this.sendOperation({ ...operation, operationName: "teardown" });
+    }
   }
 
   onResult = result => {
@@ -66,17 +45,33 @@ export class Client {
     listeners.forEach(listener => listener(result));
   };
 
-  execute = async (operation, cb) => {
-    const operationWithContext = {
-      ...operation,
+  reexecute = operation => {
+    const { key } = operation;
+    const listeners = this.listeners[key] || (this.listeners[key] = new Set());
+    if (listeners.size > 0) {
+      this.sendOperation(operation);
+    }
+  };
+
+  execute = async (baseOperation, cb) => {
+    const operation = {
+      ...baseOperation,
       context: {
-        ...operation.context,
-        url: this.url,
-        fetchOptions: this.fetchOptions
+        ...this.context,
+        ...baseOperation.context
       }
     };
 
-    this.onOperationStart(operationWithContext, cb);
-    return () => this.onOperationEnd(operationWithContext, cb);
+    if (operation.operationName === "mutation") {
+      const onResult = result => {
+        cb(result);
+        delete this.listeners[result.operation.key];
+      };
+
+      this.onOperationStart(operation, onResult);
+    } else {
+      this.onOperationStart(operation, cb);
+      return () => this.onOperationEnd(operation, cb);
+    }
   };
 }

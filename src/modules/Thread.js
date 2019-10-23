@@ -1,9 +1,11 @@
 import React from "react";
+import gql from "graphql-tag";
 import styled from "styled-components";
 import { timeDifferenceForDate } from "../utils/timeDiff";
 import { LikeButton } from "./LikeButton";
+import { useMutation } from "../lib/useMutation";
 
-const LIKE_THREAD_MUTATION = `
+const LIKE_THREAD_MUTATION = gql`
   mutation($id: ID!) {
     likeThread(threadId: $id) {
       id
@@ -22,8 +24,7 @@ const Thead = ({
   id,
   createdAt
 }) => {
-  let result = { fetching: true };
-  let like = id => {};
+  const [result, like] = useMutation(LIKE_THREAD_MUTATION);
 
   return (
     <Wrapper>
